@@ -18,3 +18,4 @@ Thanks for checking it out!
 
 # Known Issues
 When attempting to use higher resolutions than "MED", adding to the terrain cannot get higher than y+1 of the clicked voxel
+Lag spikes every couple seconds - this seems to be linked to physics processing and I am not sure how to fix it yet
