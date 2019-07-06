@@ -17,13 +17,5 @@ While attempting to learn and understand the algorithm along with c# and unity b
 
 To help out those who come after me, I decided to create this project with readability in mind. At the cost of a fair bit of optimization, I believe that this code is pretty readable with comments preceding almost every line to explain variables, classes, and functions. In the future I plan to optimize the crap out of this project and hopefully either set up the "Job System" that I keep hearing about, or set up some threads to decrease some of the CPU load.
 
-At the moment, before I added the awful camera movement, the project was running at about 75fps when manipulating the terrain and 200fps at idle. I am pretty happy with this given the amount of array iterating that this project does (and how poor my code structure is).
 
 Thanks for checking it out!
-
-
-
-# Known Issues
-When attempting to use higher resolutions than "MED", adding to the terrain cannot get higher than y+1 of the clicked voxel
-
-Lag spikes every couple seconds - this seems to be linked to physics processing and I am not sure how to fix it yet
