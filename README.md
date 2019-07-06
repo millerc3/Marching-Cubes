@@ -1,3 +1,8 @@
+# Checkout The Progression of The Project!
+
+https://imgur.com/gallery/LxMHpKr
+![alt text](https://i.imgur.com/IsbIv8i.png)
+
 # Marching-Cubes
 
 I recently graduated with a Computer Engineering degree without a job lined up, so in my free time I sought out a neat project to work on and remembered how much I enjoyed learning some Unity basics over the last couple years. I like to use hobby projects to talk about during interviews and I hadn't worked on one in a couple of months so I started this project!
