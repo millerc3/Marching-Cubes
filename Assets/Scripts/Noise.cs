@@ -77,6 +77,24 @@ public class Noise {
             }
         }
 
+        // generating sphere world:
+        if (true)
+            for (int y = 0; y < ySize; y++)
+            {
+                for (int z = 0; z < zSize; z++)
+                {
+                    for (int x = 0; x < xSize; x++)
+                    {
+                        if (Vector3.Distance(
+                            new Vector3(x, y, z), 
+                            new Vector3(xSize/2, ySize/2, zSize/2)) >= Mathf.Min(xSize, ySize, zSize)/3) {
+                            noiseMatrix[x, y, z] = 1;
+                        }
+                    
+                    }
+                }
+            }
+
 
         for (int y = 0; y < ySize; y++)
         {
@@ -181,7 +199,7 @@ public class Noise {
                     if (y < height)
                         density = 0;                
                     else if (y == height)
-                        density = Random.Range(.25f, 1);
+                        density = .51f;
                     else
                         density = 1;
 

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44963968, g: 0.49675298, b: 0.55976796, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -234,30 +234,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd3a7eda2d05aec48aa1dcd640644b80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  xChunks: 15
-  yChunks: 15
-  zChunks: 15
+  xChunks: 20
+  yChunks: 20
+  zChunks: 20
   cubeResolution: 2
-  drawCubes: 0
   surfaceLevel: 0.5
-  editValue: 0.11
-  radius: 3
   mapHolder: {fileID: 1995334972}
   chunk_parent: {fileID: 1649369479303332, guid: 435a72d2c231bdb4382074707f22e016,
     type: 2}
   voxel: {fileID: 1818687958412996, guid: b47f91f650a02e14d9c8a15ef4b1148d, type: 2}
   scale: 15.12
   octaves: 4
-  persistance: 0.2
-  lacurnarity: 4.8
-  offset3D: {x: 4.81, y: -0.22, z: 0.72}
+  persistance: 0.48
+  lacurnarity: 2.9
+  offset3D: {x: 40.23, y: 48.93, z: 0.72}
   offset2D: {x: 1.5, y: 1.8}
   dim: 0
   openMiddle: 3
   softEdge: 1
   mesh_material: {fileID: 2100000, guid: 7f486327e6f038441abb7dd0ee779192, type: 2}
-  cameraSpeed: 0.5
+  cameraSpeed: 0.3
   mouseSens: 0.3
+  editValue: 0.04
+  radius: 2
 --- !u!1 &1995334972
 GameObject:
   m_ObjectHideFlags: 0
@@ -344,10 +343,10 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 2117563602}
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.1618942, y: -0.0709009, z: 0.31525764, w: 0.9324034}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 20.28, y: -1.8410001, z: 37.033}

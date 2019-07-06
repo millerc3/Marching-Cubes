@@ -2,15 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/*
- * TODO:
- * 
- *      
- * IMPLEMENT
- *      Maybe add a world type generation, check the distance from the center and generate a sphyere of 3d noise
- *      
-*/
-
 
 public class VoxelGenerator : MonoBehaviour {
 
@@ -46,14 +37,6 @@ public class VoxelGenerator : MonoBehaviour {
     // Determine the surface level of the objects
     [Range(0, 1)]
     public float surfaceLevel = .6f;
-
-    // Determine the value at which to create and destroy voxels on touch
-    [Range(0, 1)]
-    public float editValue = .25f;
-
-    // Determine the value for the edit brush size
-    [Range(0, 4)]
-    public int radius = 1;
 
     // Game object to hold all the chunks (so the heirarchy doesnt get crowded)
     public GameObject mapHolder;
@@ -114,9 +97,35 @@ public class VoxelGenerator : MonoBehaviour {
     List<GameObject> meshes;
     #endregion
 
+    #region Camera settings
     // information for the camera movement
-    public float cameraSpeed = .5f;
+    public float cameraSpeed = .3f;
     public float mouseSens = 10f;
+    #endregion
+    
+    #region Optimizers
+
+    Vector3[] emptyVertices;
+    int[] emptyIndices;
+    int[] emptyCurrentVoxel;
+    int[] emptyHitIndices;
+    int[] emptyChunkIndices;
+    Vector3 distanceP1;
+    Vector3 distanceP2;
+    int[] emptyNoiseIndices;
+    Vector3 emptyWallPos;
+    #endregion
+
+    #region TerrainEditing
+
+    // Determine the value at which to create and destroy voxels on touch
+    [Range(0, 1)]
+    public float editValue = .25f;
+
+    // Determine the value for the edit brush size
+    [Range(0, 4)]
+    public int radius = 1;
+    #endregion
 
     // Initializers
     private void Initialize()
@@ -147,6 +156,20 @@ public class VoxelGenerator : MonoBehaviour {
         editValue *= (float)cubeResolution;
     }
 
+    // Function for precaluclations and pre data storage
+    void Optimizers()
+    {
+        emptyVertices = new Vector3[12];
+        emptyCurrentVoxel = new int[3];
+        emptyIndices = new int[3];
+        emptyHitIndices = new int[3];
+        emptyChunkIndices = new int[3];
+        distanceP1 = new Vector3();
+        distanceP2 = new Vector3();
+        emptyNoiseIndices = new int[3];
+        emptyWallPos = new Vector3();
+    }
+
     // Fill the mapNoise matrix with all the necessary noise values for the playing field
     void CalculateAllNoise()
     {
@@ -174,6 +197,8 @@ public class VoxelGenerator : MonoBehaviour {
         int y = currChunk.chunksIndex[1];
         int z = currChunk.chunksIndex[2];
 
+        float currNoise = 0;
+
         // iterate through the noiseMap and add the noise to the current node in the chunk matrix
         for (int _y = 0, k = y * (yChunkCubeLength - 2); k < y * (yChunkCubeLength - 2) + yChunkCubeLength; k++, _y++)
         {
@@ -182,18 +207,45 @@ public class VoxelGenerator : MonoBehaviour {
                 for (int _x = 0, i = x * (xChunkCubeLength - 2); i < x * (xChunkCubeLength - 2) + xChunkCubeLength; i++, _x++)
                 {
                     // get the noise from the large noise map
-                    float currNoise = mapNoise[i, k, j];
+                    currNoise = mapNoise[i, k, j];
 
-                    // put the current location's noise into the chunk matrix' current node
-                    // this is an awful line and im sorry
-                    currChunk.nodes[_x, _y, _z] = new Node(new Vector3(_x / (float)cubeResolution + x * xChunkLength, _y / (float)cubeResolution + y * yChunkLength, _z / (float)cubeResolution + z * zChunkLength), currNoise);
-                    currChunk.nodes[_x, _y, _z].noiseIndices = new int[3] { i, k, j };
+                    // define the node's position in unity space'
+                    //Debug.Log(currChunk.nodes[_x, _y, _z].position.x);
+                    currChunk.nodes[_x, _y, _z].position.x = _x / (float)cubeResolution + x * xChunkLength;
+                    currChunk.nodes[_x, _y, _z].position.y = _y / (float)cubeResolution + y * yChunkLength;
+                    currChunk.nodes[_x, _y, _z].position.z = _z / (float)cubeResolution + z * zChunkLength;
+
+                    // define the node's isovalue
+                    currChunk.nodes[_x, _y, _z].isovalue = currNoise;
+
+                    // define the node's location on the noise map
+                    currChunk.nodes[_x, _y, _z].noiseIndices[0] = i;
+                    currChunk.nodes[_x, _y, _z].noiseIndices[1] = k;
+                    currChunk.nodes[_x, _y, _z].noiseIndices[2] = j;
 
                     // add the working matrix to the array of chunks
                     chunks[x, y, z] = currChunk;
                 }
             }
         }
+    }
+
+    // Add all of the necessary nodes to the chunk matrix
+    void AddNodesToChunk(ChunkMatrix currChunk)
+    {
+        for (int y = 0; y<yChunkCubeLength; y++)
+        {
+            for (int z = 0; z<zChunkCubeLength; z++)
+            {
+                for (int x = 0; x<xChunkCubeLength; x++)
+                {
+                    currChunk.nodes[x, y, z] = new Node(Vector3.zero, 0f);
+}
+            }
+        }
+
+        // place the current chunk into the chunk array
+        chunks[currChunk.chunksIndex[0], currChunk.chunksIndex[1], currChunk.chunksIndex[2]] = currChunk;
     }
 
     // Create a single chunk's matrix of nodes
@@ -207,12 +259,27 @@ public class VoxelGenerator : MonoBehaviour {
         chunkObj.tag = "Chunk";
         currChunkMatrix.chunkObj = chunkObj;
 
+        Mesh mesh = new Mesh();
+        mesh.SetVertices(currChunkMatrix.vertices);
+        mesh.SetTriangles(currChunkMatrix.indices, 0);
+        currChunkMatrix.chunkMesh = new GameObject("Mesh");
+        currChunkMatrix.chunkMesh.transform.parent = currChunkMatrix.chunkObj.transform;
+        currChunkMatrix.chunkMesh.AddComponent<MeshCollider>();
+        currChunkMatrix.chunkMesh.AddComponent<MeshFilter>();
+        currChunkMatrix.chunkMesh.AddComponent<MeshRenderer>();
+        currChunkMatrix.chunkMesh.GetComponent<Renderer>().material = mesh_material;
+        currChunkMatrix.chunkMesh.GetComponent<MeshFilter>().mesh = mesh;
+        currChunkMatrix.chunkMesh.GetComponent<MeshCollider>().sharedMesh = mesh;
+        currChunkMatrix.chunkMesh.tag = "Mesh";
+        currChunkMatrix.chunkMesh.transform.localPosition = Vector3.zero;
+
         // this is like the local positions of the chunk with respect to other chunks
         currChunkMatrix.chunksIndex = new int [] { x, y, z };
 
         // this is the true position of the start of the chunk in unity units... or whatever
         currChunkMatrix.position = new Vector3(x * xChunkLength / (float)cubeResolution, y * yChunkLength / (float)cubeResolution, z * zChunkLength / (float)cubeResolution);
 
+        AddNodesToChunk(currChunkMatrix);
 
         AddNoiseToChunk(currChunkMatrix);
 
@@ -261,7 +328,7 @@ public class VoxelGenerator : MonoBehaviour {
         int edges = MarchingCubes.edgeTable[cubeIndex];
 
         // array holding the positions of each edge vertex
-        Vector3[] edgeVertices = new Vector3[12];
+        Vector3[] edgeVertices = emptyVertices;
 
         // value of which vertex is being worked on at the moment for the mesh creation
         int vert;
@@ -380,22 +447,18 @@ public class VoxelGenerator : MonoBehaviour {
     //      x y z are the indicies in the chunk matrix for which chunk youre referencing not the chunks position
     void DrawSingleMesh(ChunkMatrix currChunk)
     {
-        Mesh mesh = new Mesh();
+        MeshFilter filter = currChunk.chunkMesh.GetComponent<MeshFilter>();
+        Mesh mesh = filter.mesh;
+        filter.mesh = null;
+        mesh.Clear();
         mesh.SetVertices(currChunk.vertices);
         mesh.SetTriangles(currChunk.indices, 0);
-        mesh.RecalculateBounds();
         mesh.RecalculateNormals();
 
-        currChunk.chunkMesh = new GameObject("Mesh");
-        currChunk.chunkMesh.transform.parent = currChunk.chunkObj.transform;
-        currChunk.chunkMesh.AddComponent<MeshCollider>();
-        currChunk.chunkMesh.AddComponent<MeshFilter>();
-        currChunk.chunkMesh.AddComponent<MeshRenderer>();
-        currChunk.chunkMesh.GetComponent<Renderer>().material = mesh_material;
-        currChunk.chunkMesh.GetComponent<MeshFilter>().mesh = mesh;
-        currChunk.chunkMesh.GetComponent<MeshCollider>().sharedMesh = mesh;
-        currChunk.chunkMesh.tag = "Mesh";
-        currChunk.chunkMesh.transform.localPosition = Vector3.zero;// new Vector3(currChunk.chunksIndex[0], currChunk.chunksIndex[1], currChunk.chunksIndex[2]);
+        filter.mesh = mesh;
+        MeshCollider collider = currChunk.chunkMesh.GetComponent<MeshCollider>();
+        collider.sharedMesh = null;
+        collider.sharedMesh = mesh;
     }
 
     // Function to iterate through chunks and draw their meshes
@@ -417,6 +480,8 @@ public class VoxelGenerator : MonoBehaviour {
     void Start () {
         Initialize();
 
+        Optimizers();
+
         CalculateAllNoise();
 
         GenerateChunks();
@@ -430,7 +495,10 @@ public class VoxelGenerator : MonoBehaviour {
     // Function to turn a position vector3 to chunk indices to figure out which chunk the point resides
     int[] GetCurrentChunkFromPos(Vector3 pos)
     {
-        int[] indices = new int[3] { Mathf.FloorToInt(pos.x / xChunkLength), Mathf.FloorToInt(pos.y / yChunkLength), Mathf.FloorToInt(pos.z / zChunkLength) };
+        int[] indices = emptyIndices;
+        indices[0] = Mathf.FloorToInt(pos.x / xChunkLength);
+        indices[1] = Mathf.FloorToInt(pos.y / yChunkLength);
+        indices[2] = Mathf.FloorToInt(pos.z / zChunkLength);
 
         return indices;
     }
@@ -438,7 +506,10 @@ public class VoxelGenerator : MonoBehaviour {
     // Function to turn a position vector3 into cube indices to figure out which voxel the point is closest to
     int[] GetCurrentCubeInChunkFromPos(Vector3 pos)
     {
-        int[] currentVoxel = new int[3] { Mathf.FloorToInt(pos.x * (float)cubeResolution) % (xChunkCubeLength - 2), Mathf.FloorToInt(pos.y * (float)cubeResolution) % (yChunkCubeLength - 2), Mathf.FloorToInt(pos.z * (float)cubeResolution) % (zChunkCubeLength - 2) };
+        int[] currentVoxel = emptyCurrentVoxel;
+        currentVoxel[0] = Mathf.FloorToInt(pos.x * (float)cubeResolution) % (xChunkCubeLength - 2);
+        currentVoxel[1] = Mathf.FloorToInt(pos.y * (float)cubeResolution) % (yChunkCubeLength - 2);
+        currentVoxel[2] = Mathf.FloorToInt(pos.z * (float)cubeResolution) % (zChunkCubeLength - 2);
 
         return currentVoxel;
     }
@@ -474,12 +545,19 @@ public class VoxelGenerator : MonoBehaviour {
     //      x,y,z are the nodes position inside the chunk
     void SetNoiseValues(ChunkMatrix currChunk, int x, int y, int z, float isovalue, int width)
     {
-        float fWidth = width / (float)cubeResolution;
+        float fWidth = width; // / (float)cubeResolution;
 
         // get the indices in the noise map for the supplied position
-        int[] hitIndices = new int[3] { currChunk.nodes[x, y, z].noiseIndices[0], currChunk.nodes[x, y, z].noiseIndices[1], currChunk.nodes[x, y, z].noiseIndices[2] };
-        int[] chunkIndices = new int[3] { currChunk.chunksIndex[0], currChunk.chunksIndex[1], currChunk.chunksIndex[2] };
-        
+        int[] hitIndices = emptyHitIndices;
+        hitIndices[0] = currChunk.nodes[x, y, z].noiseIndices[0];
+        hitIndices[1] = currChunk.nodes[x, y, z].noiseIndices[1];
+        hitIndices[2] = currChunk.nodes[x, y, z].noiseIndices[2];
+
+        int[] chunkIndices = emptyChunkIndices;
+        chunkIndices[0] = currChunk.chunksIndex[0];
+        chunkIndices[1] = currChunk.chunksIndex[1];
+        chunkIndices[2] = currChunk.chunksIndex[2];
+
 
         // if its in the middle of the chunks
         if (chunkIndices[0] > 0 && chunkIndices[0] < xChunks - 1 &&
@@ -494,22 +572,23 @@ public class VoxelGenerator : MonoBehaviour {
                     
                     for (int x_ = hitIndices[0] - width; x_ < hitIndices[0] + width; x_++)
                     {
-                        float checkDst = Vector3.Distance(
-                            new Vector3(x_, y_, z_),
-                            new Vector3(hitIndices[0], hitIndices[1], hitIndices[2]));
+                        // Create vectors to check the distances between the nodes within the range of the hit point
+                        distanceP1.x = x_;
+                        distanceP1.y = y_;
+                        distanceP1.z = z_;
+                        distanceP2.x = hitIndices[0];
+                        distanceP2.y = hitIndices[1];
+                        distanceP2.z = hitIndices[2];
 
-                        // this function struggled - not sure why, will look at it in the future
-                        // using a parabolic equation to determine the isovalue as a function of distance away from the hit
-                        //          isovalueEditValue = (width - dist) / width * isovalue
-
-                        //float newIso = ((fWidth/2) - checkDst) / (fWidth/2) * isovalue;
-                        //Debug.Log(isovalue);
-                        //mapNoise[x_, y_, z_] += isovalue;
+                        float checkDst = Vector3.Distance(distanceP1, distanceP2);
 
                         if (checkDst <= fWidth)
                         {
-                            //float newIso = ((fWidth/2) - checkDst) / (fWidth/2) * isovalue;
                             mapNoise[x_, y_, z_] += isovalue;
+                            if (mapNoise[x_, y_, z_] > 1)
+                                mapNoise[x_, y_, z_] = 1;
+                            else if (mapNoise[x_, y_, z_] < 0)
+                                mapNoise[x_, y_, z_] = 0;
                         }
                     }
                 }
@@ -524,8 +603,8 @@ public class VoxelGenerator : MonoBehaviour {
     // Function to reset the chunk's mesh data
     ChunkMatrix ResetChunkMeshData(ChunkMatrix hitChunk)
     {
-        hitChunk.vertices = new List<Vector3>();
-        hitChunk.indices = new List<int>();
+        hitChunk.vertices.Clear();
+        hitChunk.indices.Clear();
         hitChunk.vertexCount = 0;
 
         // reset the noise in the chunk
@@ -561,9 +640,6 @@ public class VoxelGenerator : MonoBehaviour {
                         // polygonize the chunk
                         MarchThroughChunk(chunks[x, y, z]);
 
-                        // delete the old mesh
-                        DestroyChunk(chunks[x, y, z]);
-
                         // draw the new mesh
                         DrawSingleMesh(chunks[x, y, z]);
                     }
@@ -578,14 +654,12 @@ public class VoxelGenerator : MonoBehaviour {
             // polygonize the chunk
             MarchThroughChunk(chunks[_x, _y, _z]);
 
-            // delete the old mesh
-            DestroyChunk(chunks[_x, _y, _z]);
-
             // draw the new mesh
             DrawSingleMesh(chunks[_x, _y, _z]);
         }
         
     }
+
 
     // Function to move the camera around
     void CameraMovement()
@@ -627,11 +701,11 @@ public class VoxelGenerator : MonoBehaviour {
     // I want to change this so that it just works on the current voxel rather than have the material fly at the user
 
     // Update is called once per frame
-    void Update () {
+    void Update() {
 
         CameraMovement();
-
-		if (Input.GetMouseButton(0) || Input.GetMouseButton(1))
+        
+        if (Input.GetMouseButton(0) || Input.GetMouseButton(1))
         {
             // dir variable is used to dictate whether the cubes are being deleted or added to
             int dir = 0;
@@ -645,27 +719,26 @@ public class VoxelGenerator : MonoBehaviour {
             }
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out hit, 1000f) && hit.transform.tag == "Mesh")
+            if (Physics.Raycast(ray, out hit, 20f) && hit.transform.tag == "Mesh")
             {
                 Vector3 hitPos = hit.point;
                 int[] currentChunkIndices = GetCurrentChunkFromPos(hitPos);
                 int[] currentVoxelIndices = GetCurrentCubeInChunkFromPos(hitPos);
-                // get the voxel above the raycast hit with respect to its normal
-                //Vector3 hitNormal = dir*Vector3.Normalize(hit.normal)/(float)cubeResolution;
-                //Vector3 aboveHit = hitPos + hitNormal;
-                //int[] aboveVoxelIndices = GetCurrentCubeInChunkFromPos(aboveHit);
+                    
 
                 // get the chunk that the ray hit
                 ChunkMatrix hitChunk = chunks[currentChunkIndices[0], currentChunkIndices[1], currentChunkIndices[2]];
 
                 // change the noise values around the affected point
-                SetNoiseValues(hitChunk, currentVoxelIndices[0], currentVoxelIndices[1], currentVoxelIndices[2], dir*editValue, radius);
+                SetNoiseValues(hitChunk, currentVoxelIndices[0], currentVoxelIndices[1], currentVoxelIndices[2], dir * editValue, radius);
+
+
 
                 // update the chunks around the affected mesh
                 UpdateSurroundingChunks(currentChunkIndices[0], currentChunkIndices[1], currentChunkIndices[2]);
             }
         }
-        
+
 
 
 	}

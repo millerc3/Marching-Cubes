@@ -353,11 +353,11 @@ public class MarchingCubes {
         return cubeIndex;
     }
 
+    static float[] cube = new float[8];
 
     // Function to get a float array of all the isovalues in the current cube
     public static float[] GetIsovaluesOfCube(Node[,,] nodes, int x, int y, int z)
     {
-        float[] cube = new float[8];
 
         // the order assigned in this mannor is essential for how the LUT(look up tables) are set up
         // the order corresponds to the vertices in Paul Burke's graphic on his 1994 site about Polygonizing a scalar field
@@ -395,10 +395,11 @@ public class Node
     // the noiseindices is the [x, y, z] component of the node in the very large 3D noise map
     public int[] noiseIndices;
 
-    public Node(Vector3 _pos, float _isovalue = 0f)
+    public Node(Vector3 _pos, float _iso)
     {
         position = _pos;
-        isovalue = _isovalue;
+        isovalue = _iso;
+        noiseIndices = new int[3];
     }
 }
 
